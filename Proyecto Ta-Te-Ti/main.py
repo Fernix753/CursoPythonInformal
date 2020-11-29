@@ -299,7 +299,8 @@ def main():
     opcion = input(f"Opción deseada:\n")
     
     while True:
-        if   opciones[0] == opcion:                         # Jugar contra la IA
+        if   opciones[0] == opcion:                                             # Jugar contra la IA
+            print(espaciador)
             i=0
             while True:
                 turno = jugar(i)
