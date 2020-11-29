@@ -288,7 +288,6 @@ def opciones_input():
     return print(">>  z  << -  Salir")
 
 def main():
-    limpiar_tablero()
     print(espaciador)
     print(espaciador)
     print("Bienvenido al increible y poderosisimo videojuego del Ta-Te-Ti! Recomendamos discreción con los gráficos explicitos del mismo!")
@@ -299,7 +298,8 @@ def main():
     opcion = input(f"Opción deseada:\n")
     
     while True:
-        if   opciones[0] == opcion:                                             # Jugar contra la IA
+        limpiar_tablero()
+        if   opciones[0] == opcion:                                            # Jugar contra la IA
             print(espaciador)
             i=0
             while True:
