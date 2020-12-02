@@ -14,6 +14,7 @@ def limpiar_tablero():
     jugadas = 0
     ultimo_jugador = None
     posiciones = ["1","2","3","4","5","6","7","8","9"]
+    lista_jugadores = ['Jugador', 'IA']
     tablero = {
         "1": simb_vacio, "2": simb_vacio, "3": simb_vacio,
         "4": simb_vacio, "5": simb_vacio, "6": simb_vacio,
