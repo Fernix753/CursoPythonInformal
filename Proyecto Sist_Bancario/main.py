@@ -75,13 +75,12 @@ def print_clientes():                   #Recorre el diccionario e imprime los no
             break
 
 def check_string(nombre):               #Verifica que una cadena de texto no tenga espacios o numeros.
-    aux = 0
+    aux = True
     if isinstance(nombre, int): return False #Si es un entero, retorna False.
     for x in nombre:
         if x.isnumeric() or x.isspace(): #Si encuentra un número o un espacio, retorna False
-            aux += 1
+            aux = False
             break
-    aux = True if aux < 1 else False
     return aux
 
 def check_16digit(valor):               #Verifica si es un valor numerico de 16 digitos, y que es un string.
@@ -289,7 +288,7 @@ def main():                             #Main
         sleep(0.02)
 
     xlsx, data = cargar_xlsx(archivo, hoja_datos)     #Intento de carga del documento.
-    
+
     if not xlsx:                        #Si no se pudo cargar el excel, pregunta si desea crear una base de datos nueva.
         if data == error_6_0:
             print("\n"+error_6_1)
