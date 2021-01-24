@@ -21,9 +21,10 @@ acciones = ["0", #Mostrar lista de clientes.
             "1", #Mostrar info de un cliente en especificio
             "2", #Agregar un cliente a la base de datos.
             "3", #Eliminar un cliente de la base de datos.
-            "H", #Mostrar ayuda
+            "4"] #Eliminar un cliente de la base de datos.
+acciones2= ["H", #Mostrar ayuda
             "Z"] #Salir del programa
-error_0     = "Hubo un error inesperado. No se completo la ultima tarea."
+
 error_1     = "Al parecer los datos ya estaban cargados."
 error_2     = "Al parecer no se ha cargardo correctamente la base datos."
 error_3     = "Al parecer alguno de los datos es invalido."
@@ -150,24 +151,35 @@ class Database():
             self.last_error = error_2
             return False
     def load_client(self, cliente, id): #Carga la info del cliente (desde el diccionario), a la clase de cliente.
-        if (cliente.name_set(       self.data[id]['Nombre']         ) and
-            cliente.sname_set(      self.data[id]['Apellido']       ) and
-            cliente.cbu_set(        self.data[id]['CBU']            ) and
-            cliente.pin_set(        self.data[id]['PIN']            ) and
-            cliente.saldo_ars_set(  self.data[id]['SALDO (PESOS)']  ) and
-            cliente.saldo_usd_set(  self.data[id]['SALDO (USD)']   )):
-            return cliente
+        if id in self.data.keys():
+            if (cliente.name_set(       self.data[id]['Nombre']         ) and
+                cliente.sname_set(      self.data[id]['Apellido']       ) and
+                cliente.cbu_set(        self.data[id]['CBU']            ) and
+                cliente.pin_set(        self.data[id]['PIN']            ) and
+                cliente.saldo_ars_set(  self.data[id]['SALDO (PESOS)']  ) and
+                cliente.saldo_usd_set(  self.data[id]['SALDO (USD)']   )):
+                return cliente
+            else:
+                return False
         else:
             return False
     def del_client(self, id):           #Eliminar cliente, lo borra del diccionario, y se guarda intenta guardar el cambio
-        try: 
+        if id in self.data.keys():
             del self.data[id]
-        except:
-            aux = error_0
-        else:
             aux = True
             self.save()
+        else:
+            aux = error_7
         return aux
+    def save_client(self, cliente, id):
+        self.data[id] = {
+            'CBU': cliente.cbu_get(),
+            'Nombre': cliente.name_get().capitalize(),
+            'Apellido': cliente.sname_get().capitalize(),
+            'PIN': cliente.pin_get(),
+            'SALDO (PESOS)': cliente.saldo_ars_get(),
+            'SALDO (USD)': cliente.saldo_usd_get()}
+        self.save()
     def print_clients(self):            #Recorre el diccionario e imprime los nombres de los clientes.
         cont = 0
         for x in self.data: 
@@ -185,6 +197,7 @@ class Cliente():
     saldo_ars= None
     saldo_usd= None
 
+    #Varios
     def reset(self):
         self.name = None
         self.sname = None
@@ -202,6 +215,13 @@ class Cliente():
       Saldo (AR$): {self.saldo_ars}
       Saldo (U$D): {self.saldo_usd}""")
 
+    def save(self):
+        if db.check_exists(self.name, self.sname):
+            return db.save_client(self, db.check_exists(self.name, self.sname, True))
+        else:
+            return False
+
+    #Sets
     def name_set(self, v):#La 'v' es de value xd
         if check_string(v):
             self.name=v
@@ -245,6 +265,7 @@ class Cliente():
         else:
             return False
 
+    #Gets
     def name_get(self):
         return self.name
     def sname_get(self):
@@ -258,6 +279,44 @@ class Cliente():
     def saldo_usd_get(self):
         return self.saldo_usd
 
+    #Modificadores
+    def ars_deb(self, debito):
+        print(f"Saldo anterior AR$: {self.saldo_ars}")
+        self.saldo_ars = self.saldo_ars - debito
+        print(f"Saldo actual AR$: {self.saldo_ars}")
+        self.save()
+    def ars_cred(self, credito):
+        print(f"Saldo anterior AR$: {self.saldo_ars}")
+        self.saldo_ars = self.saldo_ars + credito
+        print(f"Saldo actual AR$: {self.saldo_ars}")
+        self.save()
+    def usd_deb(self, debito):
+        print(f"Saldo anterior U$D: {self.saldo_usd}")
+        self.saldo_usd = self.saldo_usd - debito
+        print(f"Saldo actual U$D: {self.saldo_usd}")
+        self.save()
+    def usd_cred(self, credito):
+        print(f"Saldo anterior U$D: {self.saldo_usd}")
+        self.saldo_usd = self.saldo_usd + credito
+        print(f"Saldo actual U$D: {self.saldo_usd}")
+        self.save()
+    def cbu_reset(self, db):
+        print(f"CBU anterior: {self.cbu}")
+        self.cbu = db.generar_cbu()
+        print(f"CBU actual: {self.cbu}")
+        self.save()
+        print(f"El CBU liberado, podría ser asignado en un futuro cercano a otra persona.")
+    def pin_reset(self):
+        newpin = input("Introduce el nuevo pin:")
+        while not check_pin(newpin):
+            try:
+                newpin = int(newpin)
+            except:
+                newpin = input("Introduce un pin válido (4 dígitos numéricos):")
+        self.pin_set( int(newpin) )
+        self.save()
+        print("El nuevo PIN fue asignado con éxito, prueba a no perderlo nuevamente pipistrela.")
+
 def print_opciones():                   #Funcion que retorna print con las opciones disponibles.
     return print(
     f"""
@@ -265,11 +324,64 @@ def print_opciones():                   #Funcion que retorna print con las opcio
     Opción >>  {acciones[1]}  << - Ver información de un cliente.
     Opción >>  {acciones[2]}  << - Crear un cliente nuevo.
     Opción >>  {acciones[3]}  << - Eliminar un cliente.
-    Opción >>  {acciones[5]}  << - Salir del programa.""")
+    Opción >>  {acciones[4]}  << - Modificar un cliente.
+    Opción >>  {acciones2[1]}  << - Salir del programa.""")
 
 def var_continuar():                    #Funcion para settear una variable común.
-    aux = input (f"\nCómo quieres continuar? Ingresa otra acción de la lista, ingresa '{acciones[4]}' para mostrar una ayuda, o '{acciones[5]}' para salir del programa.\n")
+    aux = input (f"\nCómo quieres continuar? Ingresa otra acción de la lista, ingresa '{acciones2[0]}' para mostrar una ayuda, o '{acciones2[1]}' para salir del programa.\n")
     return str(aux).strip().upper()
+
+def id_pick(cliente):
+    aux_opciones = ["ID", "NOMBRE"]
+    print(f"Quieres elegir un cliente por su nombre o por su ID ? [{aux_opciones[0]}/{aux_opciones[1]}]")
+    aux1 = input()
+    aux1 = aux1.upper().strip()
+    while aux1 not in aux_opciones:
+        print(f"Introduciste {aux1}, eso no es una opción válida, prueba nuevamente.")
+        print(f"Quieres elegir un cliente por su nombre o por su ID ? [{aux_opciones[0]}/{aux_opciones[1]}] o '{acciones2[1]}' para salir.")
+        aux1 = input()
+        aux1 = aux1.upper().strip()
+        if aux1 == acciones2[1]:
+            return False
+
+    if aux1 == aux_opciones[0]:
+        db.print_clients()
+        aux = None
+        id = input("\nIngresa el ID del cliente: ")
+        while ((not isinstance(id, int)) and (aux != False)):
+            if id.upper().strip() ==  acciones2[1]:
+                return False
+            if id.isnumeric():
+                id = int(id)
+                aux = db.load_client(cliente, id)
+                if aux == False:
+                    id = input(error_7 + f" Intenta nuevamente o '{acciones2[1]}' para volver:")
+            else:
+                id = input(f"El ID ingresado no es válido, prueba nuevamente o '{acciones2[1]}' para volver: ")
+        if aux != False:
+            return id
+        else:
+            return False
+    elif aux1 == aux_opciones[1]:
+        nombre = input(f"\nIngresa el nombre del cliente o '{acciones2[1]}' para volver: ")
+        if nombre.upper().strip() ==  acciones2[1]:
+            return False
+        apellido = input(f"Ingresa el apellido del cliente o '{acciones2[1]}' para volver: ")
+        if apellido.upper().strip() ==  acciones2[1]:
+            return False
+        print(nombre.upper().strip())
+        nombre, apellido = nombre.capitalize(), apellido.capitalize()
+        while not db.check_exists(nombre, apellido):
+            print(error_7)
+            nombre = input(f"\nIngresa el nombre del cliente o '{acciones2[1]}' para volver: ")
+            if nombre.upper().strip() ==  acciones2[1]:
+                return False
+            apellido = input(f"Ingresa el apellido del cliente o '{acciones2[1]}' para volver: ")
+            if apellido.upper().strip() ==  acciones2[1]:
+                return False
+            print(nombre.upper().strip())
+            nombre, apellido = nombre.capitalize(), apellido.capitalize()
+        return db.check_exists(nombre, apellido, True)
 
 def main(cliente, db):                  #Main
     print(espaciador)
@@ -310,8 +422,8 @@ def main(cliente, db):                  #Main
     aux = input()                       #Input auxiliar
     while type(db.data) != None:
         aux = str(aux).strip().upper()
-        while aux not in acciones:      #Si el input no es una opción válida, se pregunta nuevamente.
-            print(f"La accion ingresada {aux} no está en la lista, prueba nuevamente o ingresa '{acciones[4]}' para mostrar una ayuda")
+        while not ((aux in acciones) or (aux in acciones2)): #Si el input no es una opción válida, se pregunta nuevamente.
+            print(f"La accion ingresada {aux} no está en la lista, prueba nuevamente o ingresa '{acciones2[0]}' para mostrar una ayuda")
             aux = input()
             aux = str(aux).strip().upper()
         if acciones[0] == aux:          #Mostrar lista de clientes.
@@ -322,16 +434,17 @@ def main(cliente, db):                  #Main
         elif acciones[1] == aux:        #Mostrar info de un cliente en especificio
             print(espaciador)
             print("Buscador de clientes. Complete los campos aqui abajo:")
-            nombre = input("\nIngresa el nombre del cliente: ")
-            apellido = input("Ingresa el apellido del cliente: ")
-            nombre, apellido = nombre.capitalize(), apellido.capitalize()
-            if db.check_exists(nombre, apellido):
-                cliente_act = db.load_client(cliente, (db.check_exists(nombre, apellido, True)))
-                cliente_act.print_data()
+            id = id_pick(cliente)
+            if id == False:
                 aux = var_continuar()
             else:
-                print(error_7, "\n")
-                aux = var_continuar()
+                if db.load_client(cliente, id) != False:
+                    cliente.print_data()
+                    cliente.reset()
+                    aux = var_continuar()
+                else:
+                    print(error_7, "\n")
+                    aux = var_continuar()
         elif acciones[2] == aux:        #Agregar un cliente a la base de datos.
             print(espaciador)
             print("Creador de registros para clientes. Complete los campos aqui abajo:")
@@ -352,54 +465,108 @@ def main(cliente, db):                  #Main
                 print(db.last_error)
             aux = var_continuar()
         elif acciones[3] == aux:        #Eliminar un cliente de la base de datos.
-            aux_opciones = ["ID", "NOMBRE"]
-            print("Decidiste eliminar un cliente, usa con cuidado esta herramienta.")
-            print(f"Quieres eliminar un cliente por su nombre o por su ID ? [{aux_opciones[0]}/{aux_opciones[1]}]")
-            aux1 = input()
-            aux1 = aux1.upper().strip()
-            if aux1 == aux_opciones[0]:
-                print(espaciador)
-                print("Eliminar registros de cliente por ID:")
-                db.print_clients()
-                id = input("\nIngresa el ID del cliente: ")
-                while not isinstance(id, int):
-                    if id.isnumeric():
-                        id = int(id)
-                    else:
-                        id = input("El ID ingresado no es válido, prueba nuevamente: ")
-                db.load_client(cliente, id)
-                if db.del_client(id):
+            print(espaciador)
+            print("Eliminar un cliente, usa con cuidado esta herramienta.")
+            id = id_pick(cliente)
+            if id == False:
+                aux = var_continuar()
+            else:
+                aux = db.del_client(id)
+                if aux == True:
                     print(f"Se eliminaron los registros del cliente: {cliente.name_get()} {cliente.sname_get()}")
                     db.save()
                     cliente.reset()
                     aux = var_continuar()
                 else:
                     print(aux)
+                    cliente.reset()
                     aux = var_continuar()
-            elif aux1 == aux_opciones[1]:
-                print(espaciador)
-                print("Eliminar registros de cliente por Nombre. Complete los campos aqui abajo:")
-                nombre = input("\nIngresa el nombre del cliente: ")
-                apellido = input("Ingresa el apellido del cliente: ")
-                nombre, apellido = nombre.capitalize(), apellido.capitalize()
-                if db.check_exists(nombre, apellido):
-                    aux = db.del_client((db.check_exists(nombre, apellido, True)))
-                    if aux == True:
-                        print(f"Se eliminaron los registros del cliente: {nombre} {apellido}")
-                    else:
-                        print(aux)
-                    aux = var_continuar()
+        elif acciones[4] == aux:        #Modificar un cliente de la base de datos.
+            print(espaciador)
+            print("Modificar los registros de un cliente.")
+            id = id_pick(cliente)
+            if id == False:
+                aux = var_continuar()
+            else:
+                if db.load_client(cliente, id) != False:
+                    aux_opciones1 = ["0", #Débito ARS
+                                    "1", #Débito USD
+                                    "2", #Acreditación ARS
+                                    "3", #Acreditación USD
+                                    "4", #Reasignación de CBU
+                                    "5"] #Reseteo de PIN
+                    cliente.print_data()
+                    #\nQué quieres hacer?
+                    print(f"\nOpción >>  {aux_opciones1[0]}  << - Débito ARS.\nOpción >>  {aux_opciones1[1]}  << - Débito USD.\nOpción >>  {aux_opciones1[2]}  << - Acreditación ARS.\nOpción >>  {aux_opciones1[3]}  << - Acreditación USD.\nOpción >>  {aux_opciones1[4]}  << - Reasignación de CBU.\nOpción >>  {aux_opciones1[5]}  << - Reseteo de PIN.")
+                    aux1 = input("\nElije la acción: ")
+                    aux1 = aux1.upper().strip()
+                    while aux1 not in aux_opciones1:
+                        print(f"Introduciste {aux1}, eso no es una opción válida, prueba nuevamente.")
+                        print(f"Elije una opción o '{acciones2[1]}' para salir.\nOpción >>  {aux_opciones1[0]}  << - Débito ARS.\nOpción >>  {aux_opciones1[1]}  << - Débito USD.\nOpción >>  {aux_opciones1[2]}  << - Acreditación ARS.\nOpción >>  {aux_opciones1[3]}  << - Acreditación USD.\nOpción >>  {aux_opciones1[4]}  << - Reasignación de CBU.\nOpción >>  {aux_opciones1[5]}  << - Reseteo de PIN.")
+                        aux1 = input("Elije la acción: ")
+                        aux1 = aux1.upper().strip()
+                        if aux1 == acciones2[1]:
+                            cliente.reset()
+                            aux = var_continuar()
+
+                    if aux1 == aux_opciones1[0]:        #Débito ARS
+                        aux1 = input("\nIntroduce el monto a debitar [ARS]: ")
+                        while not isinstance(aux1, float): 
+                            try:
+                                aux1 = float(aux1)
+                            except:
+                                aux1 = input(f"Introdujiste {aux1}, no es válido. Introduce el monto a debitar: ")
+                        cliente.ars_deb(aux1)
+                        aux = var_continuar()
+
+                    elif aux1 == aux_opciones1[1]:      #Débito USD
+                        aux1 = input("\nIntroduce el monto a debitar [USD]: ")
+                        while not isinstance(aux1, float): 
+                            try:
+                                aux1 = float(aux1)
+                            except:
+                                aux1 = input(f"Introdujiste {aux1}, no es válido. Introduce el monto a debitar: ")
+                        cliente.usd_deb(aux1)
+                        aux = var_continuar()
+
+                    elif aux1 == aux_opciones1[2]:      #Acreditación ARS
+                        aux1 = input("\nIntroduce el monto a acreditar [ARS]: ")
+                        while not isinstance(aux1, float): 
+                            try:
+                                aux1 = float(aux1)
+                            except:
+                                aux1 = input(f"Introdujiste {aux1}, no es válido. Introduce el monto a acreditar: ")
+                        cliente.ars_cred(aux1)
+                        aux = var_continuar()
+
+                    elif aux1 == aux_opciones1[3]:      #Acreditación USD
+                        aux1 = input("\nIntroduce el monto a acreditar [USD]: ")
+                        while not isinstance(aux1, float): 
+                            try:
+                                aux1 = float(aux1)
+                            except:
+                                aux1 = input(f"Introdujiste {aux1}, no es válido. Introduce el monto a acreditar: ")
+                        cliente.usd_cred(aux1)
+                        aux = var_continuar()
+
+                    elif aux1 == aux_opciones1[4]:      #Reasignación de CBU
+                        cliente.cbu_reset(db)
+                        aux = var_continuar()
+
+                    elif aux1 == aux_opciones1[5]:      #Reseteo de PIN
+                        cliente.pin_reset()
+                        aux = var_continuar()
                 else:
                     print(error_7)
+                    cliente.reset()
                     aux = var_continuar()
-            print(f"Introduciste {aux1}, eso no es una opción válida, prueba nuevamente.")
-        elif acciones[4] == aux:        #Mostrar ayuda
+
+        elif acciones2[0] == aux:        #Mostrar ayuda
             print("A continuación se muestran las opciones para el manejo de datos de la clientela.")
             print_opciones()
             aux = var_continuar()
-        elif acciones[5] == aux:        #Salir del programa
-            print(espaciador)
-            print("\nElejiste cerrar el administrador de clientes. Gracias por trabajar con nosotros.")
+        elif acciones2[1] == aux:        #Salir del programa
+            print("\n\nElejiste cerrar el administrador de clientes. Gracias por trabajar con nosotros.")
             input()
             db.save()
             return exit()
