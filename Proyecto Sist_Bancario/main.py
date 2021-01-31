@@ -6,15 +6,6 @@ from time import sleep
 import os.path
 from os import path
 
-# Formato de datos
-# data = {
-#     0: {'CBU':'9876543210123456', 'Nombre': 'Juan', 'Apellido': 'Pérez', 'PIN': 1234, 'SALDO (PESOS)': 1.0, 'SALDO (USD)': 0.0},
-#     1: {'CBU':'9876543210123457', 'Nombre': 'Rodrigo', 'Apellido': 'Saez', 'PIN': 1122, 'SALDO (PESOS)': 50.0, 'SALDO (USD)': 0.0}
-#     entero,    string de 16 numeros,         String,                String,      entero,                flotante         flotante
-# }
-# Formato para agregar datos al diccionario
-# data[2]={'CBU':'9876543210123222', 'Nombre': 'Pedro', 'Apellido': 'Nuñez', 'PIN': 1322, 'SALDO (PESOS)': 25.0, 'SALDO (USD)': 0.0}
-
 espaciador = "\n"*25
 respuestas = ["SI", "NO"] #Respuesta 0 - Afirmación \\ Respuesta 1 - Negación
 acciones = ["0", #Mostrar lista de clientes.
@@ -24,23 +15,30 @@ acciones = ["0", #Mostrar lista de clientes.
             "4"] #Eliminar un cliente de la base de datos.
 acciones2= ["H", #Mostrar ayuda
             "Z"] #Salir del programa
+            
+ask_1     = f"No se encontró el documento en el directorio actual ¿Deseas crear una base de datos nueva? [{respuestas[0]}/{respuestas[1]}]"
 
 error_1     = "Al parecer los datos ya estaban cargados."
 error_2     = "Al parecer no se ha cargardo correctamente la base datos."
 error_3     = "Al parecer alguno de los datos es invalido."
 error_4     = "Hubo un error al intentar guardar la base de datos."
 error_5     = "Al parecer el cliente que intentas crear ya existe en la base de datos."
-error_6     = f"No se encontró el documento en el directorio actual ¿Deseas crear una base de datos nueva? [{respuestas[0]}/{respuestas[1]}]"
-error_7     = "Al parecer el usuario que ingresaste no existe en la base de datos."
+error_6     = "Al parecer el usuario que ingresaste no existe en la base de datos."
 
+
+def abs(v):                             #Fuerza un valor absoluto
+    if v < 0:
+        return (v*-1)
+    else:
+        return v
 def check_string(nombre):               #Verifica que una cadena de texto no tenga espacios o numeros.
-    aux = True
+    var = True
     if isinstance(nombre, int): return False #Si es un entero, retorna False.
     for x in nombre:
         if x.isnumeric() or x.isspace(): #Si encuentra un número o un espacio, retorna False
-            aux = False
+            var = False
             break
-    return aux
+    return var
 def check_16digit(valor):               #Verifica si es un valor numerico de 16 digitos, y que es un string.
     if isinstance(valor, int):          #Si es un entero, prueba convertirlo.
         return check_16digit(str(valor)) 
@@ -58,8 +56,17 @@ class Database():
     data = None
     dbcheck = False
     last_error = None
-    _file = "./bsna_topoland.xlsx"
+    _file = "./bna_topoland.xlsx"
     _sheet= "BANCO TOPOLAND"
+
+    # Formato de datos
+    # data = {
+    #     0: {'CBU':'9876543210123456', 'Nombre': 'Juan', 'Apellido': 'Pérez', 'PIN': 1234, 'SALDO (PESOS)': 1.0, 'SALDO (USD)': 0.0},
+    #     1: {'CBU':'9876543210123457', 'Nombre': 'Rodrigo', 'Apellido': 'Saez', 'PIN': 1122, 'SALDO (PESOS)': 50.0, 'SALDO (USD)': 0.0}
+    #     entero,    string de 16 numeros,         String,                String,      entero,                flotante         flotante
+    # }
+    # Formato para agregar datos al diccionario
+    # data[2]={'CBU':'9876543210123222', 'Nombre': 'Pedro', 'Apellido': 'Nuñez', 'PIN': 1322, 'SALDO (PESOS)': 25.0, 'SALDO (USD)': 0.0}
 
     def data_reset(self):               #Resetea la base de datos (Sólo se usa para cuando no se encuentra la DB y se crea otra desde 0)
         self.data = {}
@@ -67,6 +74,7 @@ class Database():
         self.save()
 
     def load(self):                     #Carga en un diccionario un dataframe extraido de un excel.
+        self.dbcheck = False
         if self.data==None:
             if path.exists(self._file):
                 self.data = pd.read_excel(self._file,sheet_name=self._sheet, index_col=0)
@@ -75,7 +83,7 @@ class Database():
                 self.last_error = True
                 return True
             else:
-                self.last_error = error_6
+                self.last_error = ask_1
                 return False
         else:
             self.last_error = error_1
@@ -97,20 +105,18 @@ class Database():
             return False
     def check_exists(self, nombre,      #Verifica (ineficientemente, posible mejora) si ya existe esa combinación de Nombre y apellido en la database.
         apellido, idget=None ):         #Si se pasa un True en el parametro IDGET, retorna el ID de existir
-        rtn = False
-        var1= None 
         for x in self.data:
             if self.data[x]['Nombre'] == nombre and self.data[x]['Apellido'] == apellido:
-                rtn = True
-                var1 = x
-                break
-        if idget != True:
-            return rtn
-        elif rtn == True:
-            return var1
-        else:
-            return rtn
+                if (idget == True):
+                    self.last_error = True
+                    return x
+                else:
+                    self.last_error = True
+                    return True  
+        self.last_error = error_6
+        return False
     def generar_cbu(self):              #Genera un número de 16 digitos (que no exista) y lo devuelve como un string.
+        #last_error = None
         __set = set()
         if self.dbcheck == True:
             if len(self.data.keys()) > 0:
@@ -119,15 +125,18 @@ class Database():
             __cbu = rd.randrange(1000000000000000, 9999999999999999)
             while __cbu in __set:
                 __cbu = rd.randrange(1000000000000000, 9999999999999999)
+            #last_error = True
             return str(__cbu)
         else:
+            #self.last_error = error_2
             return False
     def create_client(self, cliente,    #Verifica que no exista, que todos los parametros sean válidos y si todo está correcto, lo guarda en mi diccionario/database.
         nombre, apellido, pin):
+        self.last_error = None
         if self.dbcheck == True:
             if cliente.name_set(nombre) and cliente.sname_set(apellido) and cliente.cbu_set(self.generar_cbu()) and cliente.pin_set(pin) and cliente.saldo_ars_set(0.0) and cliente.saldo_usd_set(0.0):
                 if not self.check_exists(nombre, apellido):
-                    aux = max(self.data.keys())+1 if len(self.data.keys()) > 0 else 0
+                    aux = max(self.data.keys())+1 if len(self.data.keys()) > 0 else 0 #Asigna el ID mas alto, si no existe ningun otro ID, vale 0.
                     self.data[aux] = {
                         'CBU': cliente.cbu_get(),
                         'Nombre': cliente.name_get().capitalize(),
@@ -136,8 +145,12 @@ class Database():
                         'SALDO (PESOS)': cliente.saldo_ars_get(),
                         'SALDO (USD)': cliente.saldo_usd_get()
                     }
-                    self.load_client(cliente, aux)
-                    return self.save()
+                    if self.load_client(cliente, aux):
+                        self.last_error = True
+                        return self.save()
+                    else:
+                        #Last error modificado en la función load_client (IF superior)
+                        return False
                 else:
                     cliente.reset()
                     self.last_error = error_5
@@ -150,7 +163,7 @@ class Database():
             cliente.reset()
             self.last_error = error_2
             return False
-    def load_client(self, cliente, id): #Carga la info del cliente (desde el diccionario), a la clase de cliente.
+    def load_client(self, cliente, id): #Carga la info del cliente (desde el diccionario) a la clase de cliente.
         if id in self.data.keys():
             if (cliente.name_set(       self.data[id]['Nombre']         ) and
                 cliente.sname_set(      self.data[id]['Apellido']       ) and
@@ -158,20 +171,32 @@ class Database():
                 cliente.pin_set(        self.data[id]['PIN']            ) and
                 cliente.saldo_ars_set(  self.data[id]['SALDO (PESOS)']  ) and
                 cliente.saldo_usd_set(  self.data[id]['SALDO (USD)']   )):
-                return cliente
+                return True
             else:
+                self.last_error = error_3
                 return False
         else:
+            self.last_error = error_6
             return False
     def del_client(self, id):           #Eliminar cliente, lo borra del diccionario, y se guarda intenta guardar el cambio
-        if id in self.data.keys():
-            del self.data[id]
-            aux = True
-            self.save()
+        if self.dbcheck == True:
+            if id in self.data.keys():
+                del self.data[id]
+                self.last_error = True
+                self.save()
+                return True
+            else:
+                self.last_error = error_6
+                return False
         else:
-            aux = error_7
-        return aux
-    def save_client(self, cliente, id):
+            self.last_error = error_2
+            return False
+    def save_client(self, cliente):
+        if self.check_exists(cliente.name, cliente.sname):
+            id = self.check_exists(cliente.name, cliente.sname, True)
+        else:
+            id = max(self.data.keys())+1 if len(self.data.keys()) > 0 else 0 #Asigna el ID mas alto, si no existe ningun otro ID, vale 0.
+        
         self.data[id] = {
             'CBU': cliente.cbu_get(),
             'Nombre': cliente.name_get().capitalize(),
@@ -182,10 +207,11 @@ class Database():
         self.save()
     def print_clients(self):            #Recorre el diccionario e imprime los nombres de los clientes.
         cont = 0
+        hasta = -1                      #Cantidad de clientes a mostrar (-1 para no tener límite)
         for x in self.data: 
             print(f"-Cliente {x}: {self.data[x]['Nombre']} {self.data[x]['Apellido']}")
             cont += 1
-            if cont == 10:
+            if cont == hasta:
                 print(f"Estos son los primeros {cont} clientes de la base de datos.")
                 break
 
@@ -215,11 +241,8 @@ class Cliente():
       Saldo (AR$): {self.saldo_ars}
       Saldo (U$D): {self.saldo_usd}""")
 
-    def save(self):
-        if db.check_exists(self.name, self.sname):
-            return db.save_client(self, db.check_exists(self.name, self.sname, True))
-        else:
-            return False
+    def save(self):                     #Guarda la info del cliente que tiene cargada en la base de datos.
+        return db.save_client(self)
 
     #Sets
     def name_set(self, v):#La 'v' es de value xd
@@ -281,21 +304,25 @@ class Cliente():
 
     #Modificadores
     def ars_deb(self, debito):
+        debito = abs(debito)
         print(f"Saldo anterior AR$: {self.saldo_ars}")
         self.saldo_ars = self.saldo_ars - debito
         print(f"Saldo actual AR$: {self.saldo_ars}")
         self.save()
     def ars_cred(self, credito):
+        credito = abs(credito)
         print(f"Saldo anterior AR$: {self.saldo_ars}")
         self.saldo_ars = self.saldo_ars + credito
         print(f"Saldo actual AR$: {self.saldo_ars}")
         self.save()
     def usd_deb(self, debito):
+        debito = abs(debito)
         print(f"Saldo anterior U$D: {self.saldo_usd}")
         self.saldo_usd = self.saldo_usd - debito
         print(f"Saldo actual U$D: {self.saldo_usd}")
         self.save()
     def usd_cred(self, credito):
+        credito = abs(credito)
         print(f"Saldo anterior U$D: {self.saldo_usd}")
         self.saldo_usd = self.saldo_usd + credito
         print(f"Saldo actual U$D: {self.saldo_usd}")
@@ -311,6 +338,8 @@ class Cliente():
         while not check_pin(newpin):
             try:
                 newpin = int(newpin)
+                if not check_pin(newpin):
+                    int("f")
             except:
                 newpin = input("Introduce un pin válido (4 dígitos numéricos):")
         self.pin_set( int(newpin) )
@@ -355,7 +384,7 @@ def id_pick(cliente):
                 id = int(id)
                 aux = db.load_client(cliente, id)
                 if aux == False:
-                    id = input(error_7 + f" Intenta nuevamente o '{acciones2[1]}' para volver:")
+                    id = input(db.last_error + f" Intenta nuevamente o '{acciones2[1]}' para volver:")
             else:
                 id = input(f"El ID ingresado no es válido, prueba nuevamente o '{acciones2[1]}' para volver: ")
         if aux != False:
@@ -369,40 +398,40 @@ def id_pick(cliente):
         apellido = input(f"Ingresa el apellido del cliente o '{acciones2[1]}' para volver: ")
         if apellido.upper().strip() ==  acciones2[1]:
             return False
-        print(nombre.upper().strip())
         nombre, apellido = nombre.capitalize(), apellido.capitalize()
         while not db.check_exists(nombre, apellido):
-            print(error_7)
+            print(db.last_error)
             nombre = input(f"\nIngresa el nombre del cliente o '{acciones2[1]}' para volver: ")
             if nombre.upper().strip() ==  acciones2[1]:
                 return False
             apellido = input(f"Ingresa el apellido del cliente o '{acciones2[1]}' para volver: ")
             if apellido.upper().strip() ==  acciones2[1]:
                 return False
-            print(nombre.upper().strip())
             nombre, apellido = nombre.capitalize(), apellido.capitalize()
+        db.load_client(cliente, db.check_exists(nombre, apellido, True))
         return db.check_exists(nombre, apellido, True)
 
 def main(cliente, db):                  #Main
     print(espaciador)
     print(f"Bienvenido al sistema bancario")
     input("Cargando base de datos. Presiona enter para continuar.")
-    for i in range(96):                 #No sé que hace todo esto pero me gusto.
-        sys.stdout.write('\r')
-        sys.stdout.write("[%-10s] %d%%" % ('='*i, 1*i))
-        sys.stdout.flush()
-        sleep(0.02)
+    if path.exists(db._file):
+        for i in range(96):                 #No sé que hace todo esto pero me gusto.
+            sys.stdout.write('\r')
+            sys.stdout.write("[%-10s] %d%%" % ('='*i, 1*i))
+            sys.stdout.flush()
+            sleep(0.02)
 
     db.load()                           #Intento de carga del documento.
 
     if not db.dbcheck:                  #Si no se pudo cargar el excel, pregunta si desea crear una base de datos nueva.
-        if db.last_error == error_6:
-            print("\n"+error_6)
+        if db.last_error == ask_1:
+            print("\n"+ask_1)
             aux = input()
             aux = aux.upper().strip()
             while aux not in respuestas:
                 print("Tu respuesta no concuerda con la pregunta, intenta nuevamente.")
-                print(error_6)
+                print(ask_1)
                 aux = input()
                 aux = aux.upper().strip()
             if aux == respuestas[0]:
@@ -412,7 +441,7 @@ def main(cliente, db):                  #Main
                 input()
                 return exit()
         else:
-            print("\n" + error_4, "El programa se cerrará. Presiona enter para continuar.")
+            print("\n" + str(db.last_error), "El programa se cerrará. Presiona enter para continuar.")
             input()
             return exit()
     print(espaciador)
@@ -434,16 +463,16 @@ def main(cliente, db):                  #Main
         elif acciones[1] == aux:        #Mostrar info de un cliente en especificio
             print(espaciador)
             print("Buscador de clientes. Complete los campos aqui abajo:")
-            id = id_pick(cliente)
-            if id == False:
+            id = id_pick(cliente) #Carga el cliente y devuelve su ID. (Es importante la carga porque más abajo se usa)
+            if id == False and id != 0:
                 aux = var_continuar()
             else:
-                if db.load_client(cliente, id) != False:
+                if db.load_client(cliente, id):
                     cliente.print_data()
                     cliente.reset()
                     aux = var_continuar()
                 else:
-                    print(error_7, "\n")
+                    print(db.last_error, "\n")
                     aux = var_continuar()
         elif acciones[2] == aux:        #Agregar un cliente a la base de datos.
             print(espaciador)
@@ -451,15 +480,13 @@ def main(cliente, db):                  #Main
             nombre = input("\nIngresa el nombre: ")
             apellido = input("Ingresa el apellido: ")
             pin = input("Ingresa el nuevo pin: ")
-            pin = pin
             while not check_pin(pin):
                 if pin.isnumeric() and len(str(pin))==4:
                     pin = int(pin)
                 else:
                     pin = input("El pin ingresado no es válido, ingresa 4 números: ")
             nombre, apellido = nombre.capitalize(), apellido.capitalize()
-            aux = db.create_client(cliente,nombre,apellido,pin)
-            if aux == True:
+            if db.create_client(cliente,nombre,apellido,pin):
                 print(f"Cliente creado con éxito, se le asigno el siguiente número de cuenta:{cliente.cbu_get()}")
             else:
                 print(db.last_error)
@@ -467,29 +494,28 @@ def main(cliente, db):                  #Main
         elif acciones[3] == aux:        #Eliminar un cliente de la base de datos.
             print(espaciador)
             print("Eliminar un cliente, usa con cuidado esta herramienta.")
-            id = id_pick(cliente)
-            if id == False:
+            id = id_pick(cliente) #Carga el cliente y devuelve su ID. (Es importante la carga porque más abajo se usa)
+            if id == False and id != 0:
                 aux = var_continuar()
             else:
-                aux = db.del_client(id)
-                if aux == True:
+                if db.del_client(id):
                     print(f"Se eliminaron los registros del cliente: {cliente.name_get()} {cliente.sname_get()}")
                     db.save()
                     cliente.reset()
                     aux = var_continuar()
                 else:
-                    print(aux)
+                    print(db.last_error)
                     cliente.reset()
                     aux = var_continuar()
         elif acciones[4] == aux:        #Modificar un cliente de la base de datos.
             print(espaciador)
             print("Modificar los registros de un cliente.")
-            id = id_pick(cliente)
-            if id == False:
+            id = id_pick(cliente) #Carga el cliente y devuelve su ID. (Es importante la carga porque más abajo se usa)
+            if id == False and id != 0:
                 aux = var_continuar()
             else:
-                if db.load_client(cliente, id) != False:
-                    aux_opciones1 = ["0", #Débito ARS
+                if db.load_client(cliente, id):
+                    aux_opciones1 = ["0",#Débito ARS
                                     "1", #Débito USD
                                     "2", #Acreditación ARS
                                     "3", #Acreditación USD
@@ -550,14 +576,16 @@ def main(cliente, db):                  #Main
                         aux = var_continuar()
 
                     elif aux1 == aux_opciones1[4]:      #Reasignación de CBU
+                        print("Reasignación de CBU. Se le asignará un numero distinto al cliente.")
                         cliente.cbu_reset(db)
                         aux = var_continuar()
 
                     elif aux1 == aux_opciones1[5]:      #Reseteo de PIN
+                        print("Resete de PIN.")
                         cliente.pin_reset()
                         aux = var_continuar()
                 else:
-                    print(error_7)
+                    print(db.last_error)
                     cliente.reset()
                     aux = var_continuar()
 
